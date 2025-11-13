@@ -5,10 +5,24 @@
   "author": "Actifai Engineering",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "dotenv -e .env node server.js",
+    "dev": "dotenv -e .env.dev nodemon server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "express": "4.16.1",
-    "pg": "8.7.1"
+    "dotenv": "^17.2.3",
+    "express": "5.1.0",
+    "helmet": "^8.1.0",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0",
+    "jest": "^30.2.0",
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

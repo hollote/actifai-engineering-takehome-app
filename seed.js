@@ -1,21 +1,11 @@
 'use strict';
 
-const { Client } = require('pg');
+const pool = require('./db');
 const fs = require("fs");
 const groupsSqlInsert = fs.readFileSync("seedGroups.sql").toString();
 const userGroupsSqlInsert = fs.readFileSync("seedUserGroups.sql").toString();
 const usersSqlInsert = fs.readFileSync("seedUsers.sql").toString();
 const salesSqlInsert = fs.readFileSync("seedSales.sql").toString();
-
-const pgclient = new Client({
-  host: 'db',
-  port: '5432',
-  user: 'user',
-  password: 'pass',
-  database: 'actifai'
-});
-
-pgclient.connect();
 
 // Create tables
 const createUsersTableQuery = `
@@ -35,8 +25,8 @@ const createGroupsTableQuery = `
 
 const createUserGroupsTableQuery = `
     CREATE TABLE IF NOT EXISTS "user_groups" (
-	    "user_id" SERIAL,
-	    "group_id" SERIAL,
+	    "user_id" INT,
+	    "group_id" INT,
 	    FOREIGN KEY(user_id) REFERENCES users(id),
 	    FOREIGN KEY(group_id) REFERENCES groups(id)
     );`;
@@ -53,43 +43,53 @@ const createSalesTableQuery = `
 
 const seedDatabase = async function() {
 
-  const usersTableExistsResult = await pgclient.query("SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users');");
+  const usersTableExistsResult = await pool.query("SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users');");
   const usersTableExists = usersTableExistsResult.rows[0].exists;
 
   // Check if users table exists already. If so, we assume the seeders have already run successfully
   if (usersTableExists) {
-    console.log('Skipping seeders.')
-    pgclient.end();
+    console.log('Skipping seeders.');
     return;
   } else {
-    console.log('Seeding database...')
+    console.log('Seeding database...');
   }
 
-  await pgclient.query(createUsersTableQuery);
+  await pool.query(createUsersTableQuery);
   console.log('Created users table.');
 
-  await pgclient.query(usersSqlInsert);
+  await pool.query(usersSqlInsert);
   console.log('Seeded users table.');
 
-  await pgclient.query(createGroupsTableQuery);
+  await pool.query(createGroupsTableQuery);
   console.log('Created groups table.');
 
-  await pgclient.query(groupsSqlInsert);
+  await pool.query(groupsSqlInsert);
   console.log('Seeded groups table.');
 
-  await pgclient.query(createUserGroupsTableQuery);
+  await pool.query(createUserGroupsTableQuery);
   console.log('Created user_groups table.');
 
-  await pgclient.query(userGroupsSqlInsert);
+  await pool.query(userGroupsSqlInsert);
   console.log('Seeded user_group table.');
 
-  await pgclient.query(createSalesTableQuery);
+  await pool.query(createSalesTableQuery);
   console.log('Created sales table.');
 
-  await pgclient.query(salesSqlInsert);
+  await pool.query(salesSqlInsert);
   console.log('Seeded sales table.');
 
-  pgclient.end();
+  // Create indexes for better query performance
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date);');
+  console.log('Created index on sales.date');
+
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_sales_user_id ON sales(user_id);');
+  console.log('Created index on sales.user_id');
+
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_user_groups_user_id ON user_groups(user_id);');
+  console.log('Created index on user_groups.user_id');
+
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_user_groups_group_id ON user_groups(group_id);');
+  console.log('Created index on user_groups.group_id');
 
 }
 
